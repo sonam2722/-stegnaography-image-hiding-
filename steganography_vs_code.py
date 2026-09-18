@@ -13,7 +13,127 @@ plt.title("Original Image")
 plt.axis('off')
 plt.show()
 
+# ==========================import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
 # ==========================
+# LOAD IMAGE
+# ==========================
+image = cv2.imread("output.png")
+
+if image is None:
+    raise FileNotFoundError("output.png not found.")
+
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+plt.imshow(image)
+plt.title("Original Image")
+plt.axis("off")
+plt.show()
+
+
+# ==========================
+# TEXT TO BINARY
+# ==========================
+def text_to_binary(text):
+    return "".join(format(ord(char), "08b") for char in text)
+
+
+# ==========================
+# ENCODING FUNCTION
+# ==========================
+def encode_image(image, secret_text):
+    eof_marker = "1111111111111110"
+    binary_secret = text_to_binary(secret_text) + eof_marker
+
+    data_index = 0
+    img = image.copy()
+
+    rows, cols, _ = img.shape
+
+    for row in range(rows):
+        for col in range(cols):
+            for channel in range(3):
+
+                if data_index < len(binary_secret):
+                    img[row, col, channel] = (
+                        img[row, col, channel] & 254
+                    ) | int(binary_secret[data_index])
+
+                    data_index += 1
+                else:
+                    return img
+
+    raise ValueError("Secret message is too large for this image.")
+
+
+# ==========================
+# DECODING FUNCTION
+# ==========================
+def decode_image(image):
+    binary_data = ""
+
+    for row in image:
+        for pixel in row:
+            for channel in pixel:
+                binary_data += str(channel & 1)
+
+    eof_marker = "1111111111111110"
+    end_position = binary_data.find(eof_marker)
+
+    if end_position == -1:
+        raise ValueError("No hidden message found.")
+
+    binary_message = binary_data[:end_position]
+
+    decoded_text = ""
+
+    for i in range(0, len(binary_message), 8):
+        byte = binary_message[i:i + 8]
+
+        if len(byte) == 8:
+            decoded_text += chr(int(byte, 2))
+
+    return decoded_text
+
+
+# ==========================
+# ENCODE MESSAGE
+# ==========================
+secret_message = "This is a hidden message!"
+
+encoded_img = encode_image(image, secret_message)
+
+plt.imshow(encoded_img)
+plt.title("Encoded Image")
+plt.axis("off")
+plt.show()
+
+
+# ==========================
+# SAVE ENCODED IMAGE
+# ==========================
+encoded_bgr = cv2.cvtColor(encoded_img, cv2.COLOR_RGB2BGR)
+
+cv2.imwrite("encoded_image.png", encoded_bgr)
+
+print("✅ Message successfully hidden.")
+
+
+# ==========================
+# DECODE MESSAGE
+# ==========================
+decoded_img = cv2.imread("encoded_image.png")
+
+if decoded_img is None:
+    raise FileNotFoundError("encoded_image.png not found.")
+
+decoded_img = cv2.cvtColor(decoded_img, cv2.COLOR_BGR2RGB)
+
+hidden_message = decode_image(decoded_img)
+
+print("🔓 Hidden Message:", hidden_message)
 # ENCODING FUNCTION
 # ==========================
 def text_to_binary(text):
